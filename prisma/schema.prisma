@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  username      String    @unique
+  displayName   String
+  avatarUrl     String?
+  bio           String?
+  createdAt     DateTime  @default(now())
+  rankings      Ranking[]
+  reviews       Review[]
+  followers     Follow[]  @relation("following")
+  following     Follow[]  @relation("follower")
+}
+
+model Movie {
+  id          String    @id
+  tmdbId      Int       @unique
+  title       String
+  posterPath  String?
+  releaseYear Int?
+  overview    String?
+  genres      String[]
+  rankings    Ranking[]
+  reviews     Review[]
+}
+
+model Ranking {
+  id        String   @id @default(uuid())
+  userId    String
+  movieId   String
+  rank      Int
+  status    Status   @default(WATCHED)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+  movie     Movie    @relation(fields: [movieId], references: [id])
+
+  @@unique([userId, movieId])
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  userId    String
+  movieId   String
+  stars     Int
+  text      String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  movie     Movie    @relation(fields: [movieId], references: [id])
+
+  @@unique([userId, movieId])
+}
+
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  follower    User     @relation("follower", fields: [followerId], references: [id])
+  following   User     @relation("following", fields: [followingId], references: [id])
+
+  @@unique([followerId, followingId])
+}
+
+enum Status {
+  WATCHED
+  WANT_TO_WATCH
+}
