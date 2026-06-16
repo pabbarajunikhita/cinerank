@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { movie, status } = await request.json()
+  const { movie, status, sentiment, score, review, tags, rank } = await request.json()
 
   try {
     // Save movie to our database if it doesn't exist yet
@@ -34,9 +34,9 @@ export async function POST(request: Request) {
       orderBy: { rank: 'desc' }
     })
 
-    const newRank = (highestRanking?.rank ?? 0) + 1
+    const newRank = rank !== undefined ? rank : (highestRanking?.rank ?? 0) + 1
 
-    // Create the ranking
+    // Create or update the ranking
     const ranking = await prisma.ranking.upsert({
       where: {
         userId_movieId: {
@@ -44,12 +44,16 @@ export async function POST(request: Request) {
           movieId: movie.id.toString()
         }
       },
-      update: { status },
+      update: { status, sentiment, score, review, tags },
       create: {
         userId: user.id,
         movieId: movie.id.toString(),
         rank: newRank,
         status,
+        sentiment,
+        score,
+        review,
+        tags: tags || [],
       }
     })
 
@@ -80,3 +84,23 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Failed to fetch rankings' }, { status: 500 })
   }
 }
+
+export async function DELETE(request: Request) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+  
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+  
+    const { rankingId } = await request.json()
+  
+    try {
+      await prisma.ranking.delete({
+        where: { id: rankingId }
+      })
+      return NextResponse.json({ success: true })
+    } catch (error) {
+      return NextResponse.json({ error: 'Failed to delete ranking' }, { status: 500 })
+    }
+  }

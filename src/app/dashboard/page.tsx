@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import MovieSearch from '@/components/MovieSearch'
+import MovieCardMenu from '@/components/MovieCardMenu'
+import AddMovieModal from '@/components/AddMovieModal'
+import { X } from 'lucide-react'
 import { TMDBMovie, getImageUrl } from '@/lib/tmdb'
 import Image from 'next/image'
 
@@ -9,6 +12,10 @@ interface Ranking {
   id: string
   rank: number
   status: string
+  sentiment: string | null
+  score: number | null
+  review: string | null
+  tags: string[]
   movie: {
     id: string
     title: string
@@ -20,6 +27,8 @@ interface Ranking {
 export default function DashboardPage() {
   const [rankings, setRankings] = useState<Ranking[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedMovie, setSelectedMovie] = useState<TMDBMovie | null>(null)
+  const [addingToWatchlist, setAddingToWatchlist] = useState(false)
 
   const fetchRankings = async () => {
     const res = await fetch('/api/rankings')
@@ -33,15 +42,59 @@ export default function DashboardPage() {
   }, [])
 
   const handleAddMovie = async (movie: TMDBMovie, status: 'WATCHED' | 'WANT_TO_WATCH') => {
+    if (status === 'WATCHED') {
+      setSelectedMovie(movie)
+    } else {
+      // Watchlist — save directly with priority prompt coming later
+      await fetch('/api/rankings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ movie, status })
+      })
+      fetchRankings()
+    }
+  }
+
+  const handleModalSave = async (data: {
+    sentiment: 'LIKED' | 'FINE' | 'DISLIKED'
+    score: number
+    review: string
+    tags: string[]
+    rank: number
+  }) => {
+    if (!selectedMovie) return
+
     await fetch('/api/rankings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ movie, status })
+      body: JSON.stringify({
+        movie: selectedMovie,
+        status: 'WATCHED',
+        ...data
+      })
     })
+
+    setSelectedMovie(null)
     fetchRankings()
   }
 
-  const watched = rankings.filter(r => r.status === 'WATCHED')
+  const handleDelete = async (rankingId: string) => {
+    await fetch('/api/rankings', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rankingId })
+    })
+    fetchRankings()
+  }
+  
+  const handleEdit = (ranking: Ranking) => {
+    // We'll wire this up to reopen the modal with existing data
+    console.log('Edit:', ranking)
+  }
+
+  const watched = rankings
+    .filter(r => r.status === 'WATCHED')
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
   const watchlist = rankings.filter(r => r.status === 'WANT_TO_WATCH')
 
   return (
@@ -60,7 +113,7 @@ export default function DashboardPage() {
             {watched.map((ranking) => (
               <div key={ranking.id} className="flex items-center gap-4 p-3 bg-neutral-900 rounded-xl">
                 <span className="text-2xl font-bold text-neutral-500 w-8 text-center">
-                  {ranking.rank}
+                  {watched.indexOf(ranking) + 1}
                 </span>
                 <div className="w-10 h-14 relative flex-shrink-0 rounded overflow-hidden bg-neutral-700">
                   {ranking.movie.posterPath ? (
@@ -76,15 +129,34 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="font-medium">{ranking.movie.title}</p>
                   <p className="text-neutral-400 text-sm">{ranking.movie.releaseYear}</p>
+                  {ranking.tags && ranking.tags.length > 0 && (
+                    <div className="flex gap-1 mt-1 flex-wrap">
+                      {ranking.tags.map(tag => (
+                        <span key={tag} className="text-xs bg-neutral-800 text-neutral-400 px-2 py-0.5 rounded-full">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+                <div className="flex items-center gap-3 ml-auto">
+                  {ranking.score && (
+                    <span className="text-2xl font-bold text-red-400">{ranking.score}</span>
+                  )}
+                  <MovieCardMenu
+                    onDelete={() => handleDelete(ranking.id)}
+                    onEdit={() => handleEdit(ranking)}
+                  />
+                </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      
 
       {/* Watchlist */}
       {watchlist.length > 0 && (
@@ -111,7 +183,13 @@ export default function DashboardPage() {
                   <p className="font-medium">{ranking.movie.title}</p>
                   <p className="text-neutral-400 text-sm">{ranking.movie.releaseYear}</p>
                 </div>
-              </div>
+                <div className="ml-auto">
+                  <MovieCardMenu
+                    onDelete={() => handleDelete(ranking.id)}
+                    onEdit={() => handleEdit(ranking)}
+                  />
+                </div>
+              </div>  
             ))}
           </div>
         </div>
@@ -121,6 +199,22 @@ export default function DashboardPage() {
         <p className="text-neutral-500 text-center py-12">
           Search for a movie above to get started!
         </p>
+      )}
+
+      {/* Modal */}
+      {selectedMovie && (
+        <AddMovieModal
+          movie={selectedMovie}
+          existingRankings={watched.map(r => ({
+            id: r.id,
+            rank: r.rank,
+            score: r.score ?? 5,
+            sentiment: r.sentiment ?? 'LIKED',
+            movie: r.movie
+          }))}
+          onSave={handleModalSave}
+          onClose={() => setSelectedMovie(null)}
+        />
       )}
     </div>
   )
