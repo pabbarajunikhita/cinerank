@@ -20,17 +20,22 @@ interface ExistingRanking {
 }
 
 interface AddMovieModalProps {
-  movie: TMDBMovie
-  existingRankings: ExistingRanking[]
-  onSave: (data: {
-    sentiment: 'LIKED' | 'FINE' | 'DISLIKED'
-    score: number
-    review: string
-    tags: string[]
-    rank: number
-  }) => void
-  onClose: () => void
-}
+    movie: TMDBMovie
+    existingRankings: ExistingRanking[]
+    existingData?: {
+      sentiment: 'LIKED' | 'FINE' | 'DISLIKED'
+      review: string
+      tags: string[]
+    }
+    onSave: (data: {
+      sentiment: 'LIKED' | 'FINE' | 'DISLIKED'
+      score: number
+      review: string
+      tags: string[]
+      rank: number
+    }) => void
+    onClose: () => void
+  }
 
 const VIBE_TAGS = [
   'Mind-bending', 'Feel-good', 'Thriller', 'Emotional',
@@ -51,22 +56,26 @@ function calculateScoreFromPosition(
   min: number,
   max: number
 ): number {
-  if (totalInBucket === 0) return (min + max) / 2
-  const range = max - min
-  const score = max - (position / (totalInBucket + 1)) * range
-  return Math.round(score * 10) / 10
-}
+    if (totalInBucket === 0) return max
+    const range = max - min
+    const step = range / (totalInBucket + 1)
+    const score = max - (position + 1) * step
+    return Math.round(score * 10) / 10
+  }
 
 export default function AddMovieModal({
   movie,
   existingRankings,
+  existingData,
   onSave,
   onClose,
 }: AddMovieModalProps) {
-  const [step, setStep] = useState<'sentiment' | 'compare' | 'details'>('sentiment')
-  const [sentiment, setSentiment] = useState<'LIKED' | 'FINE' | 'DISLIKED' | null>(null)
-  const [review, setReview] = useState('')
-  const [selectedTags, setSelectedTags] = useState<string[]>([])
+    const [step, setStep] = useState<'sentiment' | 'compare' | 'details'>('sentiment')
+    const [sentiment, setSentiment] = useState<'LIKED' | 'FINE' | 'DISLIKED' | null>(
+        existingData?.sentiment ?? null
+    )
+    const [review, setReview] = useState(existingData?.review ?? '')
+    const [selectedTags, setSelectedTags] = useState<string[]>(existingData?.tags ?? [])
 
   // Binary search state
   const [low, setLow] = useState(0)

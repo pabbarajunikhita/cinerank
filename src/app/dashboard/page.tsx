@@ -28,6 +28,7 @@ export default function DashboardPage() {
   const [rankings, setRankings] = useState<Ranking[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedMovie, setSelectedMovie] = useState<TMDBMovie | null>(null)
+  const [editingRanking, setEditingRanking] = useState<Ranking | null>(null)
   const [addingToWatchlist, setAddingToWatchlist] = useState(false)
 
   const fetchRankings = async () => {
@@ -88,8 +89,15 @@ export default function DashboardPage() {
   }
   
   const handleEdit = (ranking: Ranking) => {
-    // We'll wire this up to reopen the modal with existing data
-    console.log('Edit:', ranking)
+    setEditingRanking(ranking)
+    setSelectedMovie({
+      id: parseInt(ranking.movie.id),
+      title: ranking.movie.title,
+      poster_path: ranking.movie.posterPath,
+      release_date: ranking.movie.releaseYear?.toString() ?? '',
+      overview: '',
+      genre_ids: []
+    })
   }
 
   const watched = rankings
@@ -205,17 +213,27 @@ export default function DashboardPage() {
       {selectedMovie && (
         <AddMovieModal
           movie={selectedMovie}
-          existingRankings={watched.map(r => ({
-            id: r.id,
-            rank: r.rank,
-            score: r.score ?? 5,
-            sentiment: r.sentiment ?? 'LIKED',
-            movie: r.movie
-          }))}
-          onSave={handleModalSave}
-          onClose={() => setSelectedMovie(null)}
-        />
-      )}
+          existingRankings={watched
+            .filter(r => !editingRanking || r.id !== editingRanking.id)
+            .map(r => ({
+              id: r.id,
+              rank: r.rank,
+              score: r.score ?? 5,
+              sentiment: r.sentiment ?? 'LIKED',
+              movie: r.movie
+            }))}
+          existingData={editingRanking ? {
+            sentiment: (editingRanking.sentiment as 'LIKED' | 'FINE' | 'DISLIKED') ?? 'LIKED',
+            review: editingRanking.review ?? '',
+            tags: editingRanking.tags ?? []
+          } : undefined}
+            onSave={handleModalSave}
+            onClose={() => {
+              setSelectedMovie(null)
+              setEditingRanking(null)
+            }}
+          />
+        )}
     </div>
   )
 }
