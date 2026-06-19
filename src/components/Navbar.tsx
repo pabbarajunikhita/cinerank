@@ -9,6 +9,7 @@ import { Film } from 'lucide-react'
 
 export default function Navbar() {
   const [user, setUser] = useState<User | null>(null)
+  const [username, setUsername] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
@@ -16,13 +17,31 @@ export default function Navbar() {
     const getUser = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       setUser(session?.user ?? null)
+
+      if (session?.user) {
+        const res = await fetch('/api/me')
+        if (res.ok) {
+          const data = await res.json()
+          setUsername(data.username)
+        }
+      }
+
       setLoading(false)
     }
 
     getUser()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null)
+      if (session?.user) {
+        const res = await fetch('/api/me')
+        if (res.ok) {
+          const data = await res.json()
+          setUsername(data.username)
+        }
+      } else {
+        setUsername(null)
+      }
       setLoading(false)
     })
 
@@ -59,9 +78,11 @@ export default function Navbar() {
               <Link href="/dashboard" className="text-neutral-400 hover:text-white text-sm">
                 My Rankings
               </Link>
-              <Link href={`/u/${user.email?.split('@')[0]}`} className="text-neutral-400 hover:text-white text-sm">
-                Profile
-              </Link>
+              {username && (
+                <Link href={`/u/${username}`} className="text-neutral-400 hover:text-white text-sm">
+                  Profile
+                </Link>
+              )}
               <Button size="sm" onClick={handleSignOut} className="bg-red-500 hover:bg-red-600">
                 Sign out
               </Button>
