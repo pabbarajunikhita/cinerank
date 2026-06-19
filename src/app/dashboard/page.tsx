@@ -35,6 +35,8 @@ export default function DashboardPage() {
   const [watchlistMovie, setWatchlistMovie] = useState<TMDBMovie | null>(null)
   const [addingToWatchlist, setAddingToWatchlist] = useState(false)
   const [editingWatchlistId, setEditingWatchlistId] = useState<string | null>(null)
+  const [tasteProfile, setTasteProfile] = useState<string | null>(null)
+  const [loadingTasteProfile, setLoadingTasteProfile] = useState(false)
 
 
   const fetchRankings = async () => {
@@ -43,6 +45,17 @@ export default function DashboardPage() {
     setRankings(data)
     setLoading(false)
   }
+
+  const fetchTasteProfile = async () => {
+    setLoadingTasteProfile(true)
+    const res = await fetch('/api/taste-profile')
+    if (res.ok) {
+      const data = await res.json()
+      setTasteProfile(data.tasteProfile)
+    }
+    setLoadingTasteProfile(false)
+  }
+
 
   useEffect(() => {
     fetchRankings()
@@ -163,10 +176,25 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold mb-2">My Rankings</h1>
-        <p className="text-neutral-400 mb-6">Search for movies to add to your list</p>
-        <MovieSearch onAddMovie={handleAddMovie} />
+        <div className="flex items-center justify-between mb-2">
+        <h1 className="text-3xl font-bold">My Rankings</h1>
+        <button
+          onClick={fetchTasteProfile}
+          disabled={loadingTasteProfile}
+          className="text-sm bg-gradient-to-r from-red-500 to-orange-500 text-white px-4 py-2 rounded-full font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+        >
+          {loadingTasteProfile ? 'Analyzing...' : '✨ My Taste Profile'}
+        </button>
       </div>
+      <p className="text-neutral-400 mb-6">Search for movies to add to your list</p>
+      <MovieSearch onAddMovie={handleAddMovie} />
+
+      {tasteProfile && (
+        <div className="mt-4 p-4 bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/20 rounded-xl">
+          <p className="text-sm text-neutral-200 leading-relaxed">{tasteProfile}</p>
+        </div>
+      )}
+    </div>
 
       {/* Watched / Ranked movies */}
       {watched.length > 0 && (
