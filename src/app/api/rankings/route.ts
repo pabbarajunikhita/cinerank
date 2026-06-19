@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { movie, status, sentiment, score, review, tags, rank } = await request.json()
+  const { movie, status, sentiment, score, review, tags, rank, priority } = await request.json()
 
   try {
     // Save movie to our database if it doesn't exist yet
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
           movieId: movie.id.toString()
         }
       },
-      update: { status, sentiment, score, review, tags },
+      update: { status, sentiment, score, review, tags, priority },
       create: {
         userId: user.id,
         movieId: movie.id.toString(),
@@ -54,6 +54,7 @@ export async function POST(request: Request) {
         score,
         review,
         tags: tags || [],
+        priority,
       }
     })
 

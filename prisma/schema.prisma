@@ -43,6 +43,7 @@ model Ranking {
   sentiment String?
   score     Float?
   review    String?
+  priority  String?
   tags      String[] @default([])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

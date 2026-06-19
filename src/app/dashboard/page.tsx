@@ -7,6 +7,8 @@ import AddMovieModal from '@/components/AddMovieModal'
 import { X } from 'lucide-react'
 import { TMDBMovie, getImageUrl } from '@/lib/tmdb'
 import Image from 'next/image'
+import WatchlistModal from '@/components/WatchlistModal'
+
 
 interface Ranking {
   id: string
@@ -16,6 +18,7 @@ interface Ranking {
   score: number | null
   review: string | null
   tags: string[]
+  priority: string | null
   movie: {
     id: string
     title: string
@@ -29,7 +32,10 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [selectedMovie, setSelectedMovie] = useState<TMDBMovie | null>(null)
   const [editingRanking, setEditingRanking] = useState<Ranking | null>(null)
+  const [watchlistMovie, setWatchlistMovie] = useState<TMDBMovie | null>(null)
   const [addingToWatchlist, setAddingToWatchlist] = useState(false)
+  const [editingWatchlistId, setEditingWatchlistId] = useState<string | null>(null)
+
 
   const fetchRankings = async () => {
     const res = await fetch('/api/rankings')
@@ -46,13 +52,7 @@ export default function DashboardPage() {
     if (status === 'WATCHED') {
       setSelectedMovie(movie)
     } else {
-      // Watchlist — save directly with priority prompt coming later
-      await fetch('/api/rankings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ movie, status })
-      })
-      fetchRankings()
+      setWatchlistMovie(movie)
     }
   }
 
@@ -64,7 +64,7 @@ export default function DashboardPage() {
     rank: number
   }) => {
     if (!selectedMovie) return
-
+  
     await fetch('/api/rankings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -74,7 +74,17 @@ export default function DashboardPage() {
         ...data
       })
     })
-
+  
+    // If this came from "mark as watched" on a watchlist item, remove the old watchlist entry
+    if (editingWatchlistId) {
+      await fetch('/api/rankings', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rankingId: editingWatchlistId })
+      })
+      setEditingWatchlistId(null)
+    }
+  
     setSelectedMovie(null)
     fetchRankings()
   }
@@ -85,6 +95,18 @@ export default function DashboardPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ rankingId })
     })
+    fetchRankings()
+  }
+
+  const handleWatchlistSave = async (priority: 'HIGH' | 'MEDIUM' | 'LOW') => {
+    if (!watchlistMovie) return
+    await fetch('/api/rankings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ movie: watchlistMovie, status: 'WANT_TO_WATCH', priority })
+    })
+    setWatchlistMovie(null)
+    setEditingWatchlistId(null)
     fetchRankings()
   }
   
@@ -100,10 +122,43 @@ export default function DashboardPage() {
     })
   }
 
+
+  const handleEditPriority = (ranking: Ranking) => {
+    setWatchlistMovie({
+      id: parseInt(ranking.movie.id),
+      title: ranking.movie.title,
+      poster_path: ranking.movie.posterPath,
+      release_date: ranking.movie.releaseYear?.toString() ?? '',
+      overview: '',
+      genre_ids: []
+    })
+    setEditingWatchlistId(ranking.id)
+  }
+  
+  const handleMarkAsWatched = (ranking: Ranking) => {
+    setEditingWatchlistId(ranking.id) // remember which watchlist item to delete later
+    setSelectedMovie({
+      id: parseInt(ranking.movie.id),
+      title: ranking.movie.title,
+      poster_path: ranking.movie.posterPath,
+      release_date: ranking.movie.releaseYear?.toString() ?? '',
+      overview: '',
+      genre_ids: []
+    })
+  }
+
   const watched = rankings
     .filter(r => r.status === 'WATCHED')
     .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-  const watchlist = rankings.filter(r => r.status === 'WANT_TO_WATCH')
+
+  const priorityOrder = { HIGH: 0, MEDIUM: 1, LOW: 2 }
+  const watchlist = rankings
+    .filter(r => r.status === 'WANT_TO_WATCH')
+    .sort((a, b) => {
+      const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 3
+      const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 3
+      return aPriority - bPriority
+    })
 
   return (
     <div className="space-y-8">
@@ -137,17 +192,19 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
-                <div className="flex-1">
+                <div>
                   <p className="font-medium">{ranking.movie.title}</p>
                   <p className="text-neutral-400 text-sm">{ranking.movie.releaseYear}</p>
-                  {ranking.tags && ranking.tags.length > 0 && (
-                    <div className="flex gap-1 mt-1 flex-wrap">
-                      {ranking.tags.map(tag => (
-                        <span key={tag} className="text-xs bg-neutral-800 text-neutral-400 px-2 py-0.5 rounded-full">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
+                  {ranking.priority && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full mt-1 inline-block ${
+                      ranking.priority === 'HIGH' ? 'bg-red-500/20 text-red-400' :
+                      ranking.priority === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-400' :
+                      'bg-neutral-700 text-neutral-400'
+                    }`}>
+                      {ranking.priority === 'HIGH' ? '🔥 High priority' :
+                       ranking.priority === 'MEDIUM' ? '👀 Medium priority' :
+                       '😴 Low priority'}
+                    </span>
                   )}
                 </div>
                 <div className="flex items-center gap-3 ml-auto">
@@ -173,31 +230,44 @@ export default function DashboardPage() {
           <div className="space-y-3">
             {watchlist.map((ranking) => (
               <div key={ranking.id} className="flex items-center gap-4 p-3 bg-neutral-900 rounded-xl">
-                <div className="w-10 h-14 relative flex-shrink-0 rounded overflow-hidden bg-neutral-700">
-                  {ranking.movie.posterPath ? (
-                    <Image
-                      src={getImageUrl(ranking.movie.posterPath)}
-                      alt={ranking.movie.title}
-                      fill
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-neutral-500 text-xs">
-                      No img
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <p className="font-medium">{ranking.movie.title}</p>
-                  <p className="text-neutral-400 text-sm">{ranking.movie.releaseYear}</p>
-                </div>
-                <div className="ml-auto">
-                  <MovieCardMenu
-                    onDelete={() => handleDelete(ranking.id)}
-                    onEdit={() => handleEdit(ranking)}
+              <div className="w-10 h-14 relative flex-shrink-0 rounded overflow-hidden bg-neutral-700">
+                {ranking.movie.posterPath ? (
+                  <Image
+                    src={getImageUrl(ranking.movie.posterPath)}
+                    alt={ranking.movie.title}
+                    fill
+                    className="object-cover"
                   />
-                </div>
-              </div>  
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-neutral-500 text-xs">
+                    No img
+                  </div>
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="font-medium">{ranking.movie.title}</p>
+                <p className="text-neutral-400 text-sm">{ranking.movie.releaseYear}</p>
+              </div>
+              <div className="flex items-center gap-3 ml-auto">
+                {ranking.priority && (
+                  <span className={`text-xs font-medium px-3 py-1 rounded-full ${
+                    ranking.priority === 'HIGH' ? 'bg-red-500/20 text-red-400' :
+                    ranking.priority === 'MEDIUM' ? 'bg-orange-500/20 text-orange-400' :
+                    'bg-yellow-500/20 text-yellow-400'
+                  }`}>
+                    {ranking.priority === 'HIGH' ? 'High priority' :
+                     ranking.priority === 'MEDIUM' ? 'Medium priority' :
+                     'Low priority'}
+                  </span>
+                )}
+                <MovieCardMenu
+                  editLabel="Change priority"
+                  onDelete={() => handleDelete(ranking.id)}
+                  onEdit={() => handleEditPriority(ranking)}
+                  onMarkWatched={() => handleMarkAsWatched(ranking)}
+                />
+              </div>
+            </div> 
             ))}
           </div>
         </div>
@@ -211,28 +281,36 @@ export default function DashboardPage() {
 
       {/* Modal */}
       {selectedMovie && (
-        <AddMovieModal
-          movie={selectedMovie}
-          existingRankings={watched
-            .filter(r => !editingRanking || r.id !== editingRanking.id)
-            .map(r => ({
-              id: r.id,
-              rank: r.rank,
-              score: r.score ?? 5,
-              sentiment: r.sentiment ?? 'LIKED',
-              movie: r.movie
-            }))}
-          existingData={editingRanking ? {
-            sentiment: (editingRanking.sentiment as 'LIKED' | 'FINE' | 'DISLIKED') ?? 'LIKED',
-            review: editingRanking.review ?? '',
-            tags: editingRanking.tags ?? []
-          } : undefined}
-            onSave={handleModalSave}
-            onClose={() => {
-              setSelectedMovie(null)
-              setEditingRanking(null)
-            }}
-          />
+  <AddMovieModal
+    movie={selectedMovie}
+    existingRankings={watched
+      .filter(r => !editingRanking || r.id !== editingRanking.id)
+      .map(r => ({
+        id: r.id,
+        rank: r.rank,
+        score: r.score ?? 5,
+        sentiment: r.sentiment ?? 'LIKED',
+        movie: r.movie
+      }))}
+    existingData={editingRanking ? {
+      sentiment: (editingRanking.sentiment as 'LIKED' | 'FINE' | 'DISLIKED') ?? 'LIKED',
+      review: editingRanking.review ?? '',
+      tags: editingRanking.tags ?? []
+    } : undefined}
+    onSave={handleModalSave}
+    onClose={() => {
+      setSelectedMovie(null)
+      setEditingRanking(null)
+      setEditingWatchlistId(null)
+    }}
+  />
+)}
+      {watchlistMovie && (
+        <WatchlistModal
+          movie={watchlistMovie}
+          onSave={handleWatchlistSave}
+          onClose={() => setWatchlistMovie(null)}
+        />
         )}
     </div>
   )
