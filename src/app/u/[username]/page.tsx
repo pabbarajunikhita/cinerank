@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { getImageUrl } from '@/lib/tmdb'
 import Image from 'next/image'
+import RecommendationsRow from '@/components/RecommendationsRow'
 
 interface ProfileRanking {
   id: string
@@ -33,6 +34,8 @@ export default function ProfilePage() {
   const username = params.username as string
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [recommendations, setRecommendations] = useState<any[]>([])
+  const [loadingRecs, setLoadingRecs] = useState(false)
   const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
@@ -62,6 +65,15 @@ export default function ProfilePage() {
       </div>
     )
   }
+  const fetchRecommendations = async () => {
+    setLoadingRecs(true)
+    const res = await fetch('/api/recommendations')
+    if (res.ok) {
+      const data = await res.json()
+      setRecommendations(data.recommendations)
+    }
+    setLoadingRecs(false)
+  }
 
   const watched = profile.rankings
     .filter(r => r.status === 'WATCHED')
@@ -86,15 +98,25 @@ export default function ProfilePage() {
   return (
     <div className="space-y-8">
       {/* Profile header */}
-      <div className="flex items-center gap-4">
-        <div className="w-20 h-20 rounded-full bg-neutral-800 flex items-center justify-center text-2xl font-bold flex-shrink-0">
-          {profile.displayName.charAt(0).toUpperCase()}
+      {/* Profile header */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-20 h-20 rounded-full bg-neutral-800 flex items-center justify-center text-2xl font-bold flex-shrink-0">
+            {profile.displayName.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">{profile.displayName}</h1>
+            <p className="text-neutral-400">@{profile.username}</p>
+            {profile.bio && <p className="text-neutral-300 mt-1 text-sm">{profile.bio}</p>}
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold">{profile.displayName}</h1>
-          <p className="text-neutral-400">@{profile.username}</p>
-          {profile.bio && <p className="text-neutral-300 mt-1 text-sm">{profile.bio}</p>}
-        </div>
+        <button
+          onClick={fetchRecommendations}
+          disabled={loadingRecs}
+          className="text-sm bg-gradient-to-r from-red-500 to-orange-500 text-white px-4 py-2 rounded-full font-medium hover:opacity-90 transition-opacity disabled:opacity-50 flex-shrink-0"
+        >
+          {loadingRecs ? 'Analyzing...' : '✨ My Recommendations'}
+        </button>
       </div>
 
       {/* Stats */}
@@ -126,7 +148,10 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
-
+      
+      {recommendations.length > 0 && (
+        <RecommendationsRow recommendations={recommendations} />
+      )}
       {/* Watched movies */}
       {watched.length > 0 && (
         <div>
