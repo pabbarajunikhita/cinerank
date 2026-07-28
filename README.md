@@ -61,7 +61,7 @@ Most movie apps ask you to give a star rating. CineRank makes you *rank* movies 
 ---
 ## Live Demo
 
-🔗 **[cinerank-pabbarajunikhita.vercel.app](cinerank-dusky.vercel.app)**
+🔗 **[cinerank-pabbarajunikhita.vercel.app](cinerank-f0l5zx9iq-pabbarajunikhita1.vercel.app)**
 
 Create an account to start ranking your movies and get your AI taste profile!
 ---
