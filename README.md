@@ -2,8 +2,6 @@
 
 A Beli-inspired movie ranking web app where you don't just rate movies — you rank them. Built with Next.js, Supabase, and Claude AI.
 
-**[Live Demo](your-vercel-url-here)** · **[My Profile](your-vercel-url/u/your-username)**
-
 ---
 
 ## What it does
@@ -84,6 +82,7 @@ npm install
 ```
 
 3. Create a `.env.local` file in the root:
+
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 DATABASE_URL=your_database_url
@@ -104,35 +103,6 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000) to see the app.
 
 ---
-
-## Architecture
-src/
-├── app/
-│   ├── api/              # Backend API routes
-│   │   ├── rankings/     # CRUD for movie rankings
-│   │   ├── movies/       # TMDB movie search
-│   │   ├── profile/      # Public profile data
-│   │   ├── recommendations/ # AI recommendations
-│   │   ├── taste-profile/   # AI taste profile
-│   │   └── me/           # Current user data
-│   ├── dashboard/        # Main rankings page
-│   ├── login/            # Auth pages
-│   ├── signup/
-│   └── u/[username]/     # Public profile pages
-├── components/
-│   ├── MovieSearch.tsx   # Debounced TMDB search
-│   ├── AddMovieModal.tsx # Rating + binary search flow
-│   ├── WatchlistModal.tsx # Priority selection
-│   ├── MovieCardMenu.tsx # Edit/delete/mark watched
-│   ├── RecommendationsRow.tsx # AI recommendations UI
-│   └── Navbar.tsx
-└── lib/
-├── tmdb.ts           # TMDB API wrapper
-├── prisma.ts         # Prisma client
-└── supabase/         # Supabase client (server + browser)
-
----
-
 ## Database Schema
 
 - **User** — auth + profile data
