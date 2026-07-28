@@ -59,49 +59,11 @@ Most movie apps ask you to give a star rating. CineRank makes you *rank* movies 
 - AI recommendations and taste profile
 
 ---
+## Live Demo
 
-## Running Locally
+🔗 **[cinerank-pabbarajunikhita.vercel.app](cinerank-dusky.vercel.app)**
 
-### Prerequisites
-- Node.js 18+
-- A [Supabase](https://supabase.com) account
-- A [TMDB](https://www.themoviedb.org) API key
-- An [Anthropic](https://console.anthropic.com) API key
-
-### Setup
-
-1. Clone the repo
-```bash
-git clone https://github.com/pabbarajunikhita/cinerank.git
-cd cinerank
-```
-
-2. Install dependencies
-```bash
-npm install
-```
-
-3. Create a `.env.local` file in the root:
-
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-DATABASE_URL=your_database_url
-DIRECT_URL=your_direct_url
-TMDB_API_KEY=your_tmdb_api_key
-ANTHROPIC_API_KEY=your_anthropic_api_key
-
-4. Generate Prisma client
-```bash
-npx prisma generate
-```
-
-5. Run the development server
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) to see the app.
-
+Create an account to start ranking your movies and get your AI taste profile!
 ---
 ## Database Schema
 
