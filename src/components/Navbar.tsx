@@ -55,7 +55,7 @@ export default function Navbar() {
 
   if (loading) return (
     <nav className="border-b border-neutral-800 bg-neutral-950">
-      <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 font-bold text-xl">
           <Film className="text-red-500" size={24} />
           CineRank
@@ -66,7 +66,7 @@ export default function Navbar() {
 
   return (
     <nav className="border-b border-neutral-800 bg-neutral-950">
-      <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 font-bold text-xl">
           <Film className="text-red-500" size={24} />
           CineRank

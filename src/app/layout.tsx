@@ -19,7 +19,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geist.className} bg-neutral-950 text-white min-h-screen`}>
         <Navbar />
-        <main className="max-w-5xl mx-auto px-4 py-8">
+        <main className="max-w-7xl mx-auto px-4 py-8">
           {children}
         </main>
       </body>

@@ -30,11 +30,18 @@ export default function MovieSearch({ onAddMovie }: MovieSearchProps) {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       setLoading(true)
-      const res = await fetch(`/api/movies/search?q=${encodeURIComponent(query)}`)
-      const data = await res.json()
-      setResults(data.results.slice(0, 6))
-      setOpen(true)
-      setLoading(false)
+      try {
+        const res = await fetch(`/api/movies/search?q=${encodeURIComponent(query)}`)
+        const data = await res.json()
+        if (!res.ok) console.error('Movie search error:', data.error)
+        setResults((data.results ?? []).slice(0, 6))
+        setOpen(true)
+      } catch (err) {
+        console.error('Movie search request failed:', err)
+        setResults([])
+      } finally {
+        setLoading(false)
+      }
     }, 400)
 
     return () => {
