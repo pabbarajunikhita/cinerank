@@ -20,6 +20,8 @@ model User {
   reviews       Review[]
   followers     Follow[]  @relation("following")
   following     Follow[]  @relation("follower")
+  movieNightsPlanned MovieNight[] @relation("planner")
+  movieNightsJoined  MovieNight[] @relation("friend")
 }
 
 model Movie {
@@ -77,6 +79,18 @@ model Follow {
   following   User     @relation("following", fields: [followingId], references: [id])
 
   @@unique([followerId, followingId])
+}
+
+// A saved Movie Night result, so it can be shared by link. Anyone with the
+// (unguessable) id can view it, like a public profile.
+model MovieNight {
+  id        String   @id @default(uuid())
+  plannerId String
+  friendId  String
+  result    Json     // tasteMatch, sharedTaste and picks, as returned to the planner
+  createdAt DateTime @default(now())
+  planner   User     @relation("planner", fields: [plannerId], references: [id])
+  friend    User     @relation("friend", fields: [friendId], references: [id])
 }
 
 enum Status {

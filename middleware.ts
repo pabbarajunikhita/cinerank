@@ -39,6 +39,8 @@ export async function middleware(request: NextRequest) {
     !request.nextUrl.pathname.startsWith('/login') &&
     !request.nextUrl.pathname.startsWith('/signup') &&
     !request.nextUrl.pathname.startsWith('/api/health') &&
+    // Shared Movie Night links (/movie-night/<id>) are viewable without an account.
+    !/^\/(api\/)?movie-night\/[^/]+$/.test(request.nextUrl.pathname) &&
     request.nextUrl.pathname !== '/'
   ) {
     const url = request.nextUrl.clone()

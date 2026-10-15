@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Image from 'next/image'
+import Link from 'next/link'
+import { Popcorn } from 'lucide-react'
 import { getImageUrl } from '@/lib/tmdb'
 import { Skeleton } from '@/components/ui/skeleton'
 import ActivityChart from '@/components/profile/ActivityChart'
@@ -34,6 +36,8 @@ interface Profile {
   avatarUrl: string | null
   createdAt: string
   isOwner: boolean
+  isSignedIn: boolean
+  isFollowing: boolean
   _count: { followers: number; following: number }
   rankings: ProfileRanking[]
 }
@@ -87,6 +91,24 @@ export default function ProfilePage() {
       .catch(() => setLoadError("Couldn't reach the server"))
       .finally(() => setLoading(false))
   }, [username])
+
+  // Optimistic: flip the button and follower count now, undo if the request fails.
+  const toggleFollow = async () => {
+    if (!profile) return
+    const follow = !profile.isFollowing
+    const apply = (on: boolean) => setProfile(p => p && {
+      ...p,
+      isFollowing: on,
+      _count: { ...p._count, followers: p._count.followers + (on ? 1 : -1) },
+    })
+    apply(follow)
+    const res = await fetch('/api/follow', {
+      method: follow ? 'POST' : 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: profile.username }),
+    }).catch(() => null)
+    if (!res?.ok) apply(!follow)
+  }
 
   const d = useMemo(() => {
     if (!profile) return null
@@ -183,6 +205,26 @@ export default function ProfilePage() {
               @{profile.username} · Member since {new Date(profile.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
             </p>
             {profile.bio && <p className="mt-1 text-sm text-neutral-300">{profile.bio}</p>}
+            {!profile.isOwner && profile.isSignedIn && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  onClick={toggleFollow}
+                  className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                    profile.isFollowing
+                      ? 'border border-neutral-700 text-neutral-300 hover:border-red-500/50 hover:text-red-300'
+                      : 'bg-white text-neutral-950 hover:bg-neutral-200'
+                  }`}
+                >
+                  {profile.isFollowing ? 'Following' : 'Follow'}
+                </button>
+                <Link
+                  href={`/movie-night?with=${encodeURIComponent(profile.username)}`}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-red-500 px-3 py-1.5 text-sm font-medium hover:bg-red-600"
+                >
+                  <Popcorn size={14} /> Movie night with {profile.displayName.split(' ')[0]}
+                </Link>
+              </div>
+            )}
           </div>
         </div>
 

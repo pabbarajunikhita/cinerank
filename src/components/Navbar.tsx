@@ -78,6 +78,9 @@ export default function Navbar() {
               <Link href="/dashboard" className="text-neutral-400 hover:text-white text-sm">
                 My Rankings
               </Link>
+              <Link href="/movie-night" className="text-neutral-400 hover:text-white text-sm">
+                Movie Night
+              </Link>
               {username && (
                 <Link href={`/u/${username}`} className="text-neutral-400 hover:text-white text-sm">
                   Profile

@@ -40,8 +40,14 @@ export async function GET(
     const supabase = await createClient()
     const { data: { user: viewer } } = await supabase.auth.getUser()
 
+    const isFollowing = viewer && viewer.id !== user.id
+      ? !!(await prisma.follow.findUnique({
+          where: { followerId_followingId: { followerId: viewer.id, followingId: user.id } },
+        }))
+      : false
+
     const { id, ...publicProfile } = user
-    return NextResponse.json({ ...publicProfile, isOwner: viewer?.id === id })
+    return NextResponse.json({ ...publicProfile, isOwner: viewer?.id === id, isSignedIn: !!viewer, isFollowing })
   } catch (error) {
     console.error('Failed to fetch profile:', error)
     return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 })
