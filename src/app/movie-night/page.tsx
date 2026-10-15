@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { Popcorn } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -99,7 +100,9 @@ export default function MovieNightPage({
 
       {friends && friends.length === 0 && (
         <p className="mb-6 text-sm text-neutral-500">
-          Follow friends from their profiles and they&apos;ll show up here. Or type a username below.
+          Friends you follow show up here.{' '}
+          <Link href="/friends" className="font-medium text-red-400 hover:text-red-300">Find friends</Link>
+          {' '}or type a username below.
         </p>
       )}
 

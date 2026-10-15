@@ -418,9 +418,18 @@ export default function ProfilePage() {
           <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
             <h3 className="mb-3 font-semibold">Social</h3>
             <div className="flex gap-8">
-              <div><p className="text-xs text-neutral-400">Following</p><p className="text-xl font-bold tabular-nums">{profile._count.following}</p></div>
-              <div><p className="text-xs text-neutral-400">Followers</p><p className="text-xl font-bold tabular-nums">{profile._count.followers}</p></div>
+              {([['Following', 'following', profile._count.following], ['Followers', 'followers', profile._count.followers]] as const).map(([label, key, n]) => {
+                const inner = <><p className="text-xs text-neutral-400">{label}</p><p className="text-xl font-bold tabular-nums">{n}</p></>
+                return profile.isOwner
+                  ? <Link key={key} href={`/friends?tab=${key}`} className="hover:opacity-80">{inner}</Link>
+                  : <div key={key}>{inner}</div>
+              })}
             </div>
+            {profile.isOwner && (
+              <Link href="/friends" className="mt-4 block rounded-full border border-neutral-700 py-1.5 text-center text-sm font-medium text-neutral-300 hover:border-neutral-500 hover:text-white">
+                Find friends
+              </Link>
+            )}
           </div>
 
           <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
