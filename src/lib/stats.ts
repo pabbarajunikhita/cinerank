@@ -69,6 +69,19 @@ export function weeklyCounts(dates: Date[], weeks: number, now = new Date()): { 
   })
 }
 
+/**
+ * The local calendar day a movie was watched. `watchedAt` is a date-only value
+ * stored as UTC midnight, so read its UTC parts; fall back to when it was ranked.
+ */
+export function watchDate(r: { watchedAt: string | null; createdAt: string }): Date {
+  if (r.watchedAt) {
+    const w = new Date(r.watchedAt)
+    return new Date(w.getUTCFullYear(), w.getUTCMonth(), w.getUTCDate())
+  }
+  const c = new Date(r.createdAt)
+  return new Date(c.getFullYear(), c.getMonth(), c.getDate())
+}
+
 export interface DayCell { date: Date; count: number; isToday: boolean; isFuture: boolean }
 
 /** Monday-first grid of the last `weeks` weeks (rows), like Strava's activity calendar. */

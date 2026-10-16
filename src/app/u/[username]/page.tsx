@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Popcorn } from 'lucide-react'
+import { Camera, Popcorn } from 'lucide-react'
+import { uploadAvatar } from '@/lib/photos'
 import { getImageUrl } from '@/lib/tmdb'
 import { Skeleton } from '@/components/ui/skeleton'
 import ActivityChart from '@/components/profile/ActivityChart'
@@ -12,7 +13,7 @@ import WeekGrid from '@/components/profile/WeekGrid'
 import PhotoLightbox from '@/components/PhotoLightbox'
 import DiscoverRail from '@/components/dashboard/DiscoverRail'
 import {
-  averageScore, favoriteDecade, recentDaysGrid, timeAgo, topTags, weeklyCounts,
+  averageScore, favoriteDecade, recentDaysGrid, timeAgo, topTags, watchDate, weeklyCounts,
 } from '@/lib/stats'
 
 interface ProfileRanking {
@@ -79,6 +80,10 @@ export default function ProfilePage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [tab, setTab] = useState<'overview' | 'rankings' | 'photos'>('overview')
   const [lightbox, setLightbox] = useState<{ url: string; caption: string } | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState({ displayName: '', bio: '' })
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
     fetch(`/api/profile/${username}`)
@@ -110,16 +115,49 @@ export default function ProfilePage() {
     if (!res?.ok) apply(!follow)
   }
 
+  const saveProfile = async (changes: { displayName?: string; bio?: string; avatarUrl?: string | null }) => {
+    setSaveError(null)
+    const res = await fetch('/api/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(changes),
+    }).catch(() => null)
+    const data = await res?.json().catch(() => null)
+    if (!res?.ok) { setSaveError(data?.error ?? "Couldn't save. Try again."); return false }
+    setProfile(p => p && { ...p, ...data })
+    return true
+  }
+
+  const changePhoto = async (file: File | undefined) => {
+    if (!file) return
+    setUploading(true)
+    setSaveError(null)
+    try {
+      await saveProfile({ avatarUrl: await uploadAvatar(file) })
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Upload failed')
+    }
+    setUploading(false)
+  }
+
+  const startEditing = () => {
+    if (!profile) return
+    setForm({ displayName: profile.displayName, bio: profile.bio ?? '' })
+    setSaveError(null)
+    setEditing(true)
+  }
+
   const d = useMemo(() => {
     if (!profile) return null
     const watched = profile.rankings
       .filter(r => r.status === 'WATCHED')
       .sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || a.rank - b.rank)
     const rankOf = new Map(watched.map((r, i) => [r.id, i + 1]))
-    const rankedDates = watched.map(r => new Date(r.createdAt))
     const now = new Date()
-    const fourWeeksAgo = new Date(now); fourWeeksAgo.setDate(now.getDate() - 28)
-    const recent = watched.filter(r => new Date(r.createdAt) >= fourWeeksAgo)
+    // The 4-week calendar and its stats go by when each movie was watched.
+    const grid = recentDaysGrid(watched.map(watchDate), 4, now)
+    const gridStart = grid[0][0].date
+    const recent = watched.filter(r => { const w = watchDate(r); return w >= gridStart && w <= now })
     const photos = watched.filter(r => r.photoUrl)
     const cover = [
       ...photos.map(r => r.photoUrl!),
@@ -128,9 +166,9 @@ export default function ProfilePage() {
     return {
       watched, rankOf, photos, cover,
       watchlistCount: profile.rankings.filter(r => r.status === 'WANT_TO_WATCH').length,
-      feed: [...watched].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 6),
-      weeks: weeklyCounts(rankedDates, 12, now),
-      grid: recentDaysGrid(rankedDates, 4, now),
+      feed: [...watched].sort((a, b) => watchDate(b).getTime() - watchDate(a).getTime() || b.createdAt.localeCompare(a.createdAt)).slice(0, 6),
+      weeks: weeklyCounts(watched.map(watchDate), 12, now),
+      grid,
       recentCount: recent.length,
       recentAvg: averageScore(recent),
       avg: averageScore(watched),
@@ -196,15 +234,74 @@ export default function ProfilePage() {
       {/* Header */}
       <div className="flex flex-col gap-6 px-2 sm:flex-row sm:items-end sm:justify-between sm:px-6">
         <div className="flex items-end gap-4">
-          <div className="-mt-14 rounded-full ring-4 ring-neutral-950">
-            <Avatar profile={profile} size="lg" />
-          </div>
+          {profile.isOwner ? (
+            <label
+              title="Change profile photo"
+              className="group relative -mt-14 cursor-pointer rounded-full ring-4 ring-neutral-950"
+            >
+              <Avatar profile={profile} size="lg" />
+              <span className={`absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-full bg-black/60 text-xs font-medium transition-opacity ${uploading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                {uploading ? 'Uploading…' : <><Camera size={20} />{profile.avatarUrl ? 'Change' : 'Add photo'}</>}
+              </span>
+              {!profile.avatarUrl && !uploading && (
+                <span className="absolute bottom-1 right-1 flex h-8 w-8 items-center justify-center rounded-full bg-white text-neutral-950 ring-4 ring-neutral-950">
+                  <Camera size={15} />
+                </span>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                disabled={uploading}
+                onChange={e => { changePhoto(e.target.files?.[0]); e.target.value = '' }}
+              />
+            </label>
+          ) : (
+            <div className="-mt-14 rounded-full ring-4 ring-neutral-950">
+              <Avatar profile={profile} size="lg" />
+            </div>
+          )}
           <div className="pb-1">
-            <h1 className="text-2xl font-bold leading-tight">{profile.displayName}</h1>
-            <p className="text-sm text-neutral-400">
-              @{profile.username} · Member since {new Date(profile.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
-            </p>
-            {profile.bio && <p className="mt-1 text-sm text-neutral-300">{profile.bio}</p>}
+            {editing ? (
+              <form
+                onSubmit={async e => { e.preventDefault(); if (await saveProfile(form)) setEditing(false) }}
+                className="w-full max-w-sm space-y-2"
+              >
+                <input
+                  value={form.displayName}
+                  onChange={e => setForm(f => ({ ...f, displayName: e.target.value }))}
+                  maxLength={50}
+                  placeholder="Name"
+                  className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-lg font-bold outline-none focus:border-neutral-500"
+                />
+                <textarea
+                  value={form.bio}
+                  onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
+                  maxLength={160}
+                  rows={2}
+                  placeholder="Short bio (optional)"
+                  className="w-full resize-none rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm outline-none focus:border-neutral-500"
+                />
+                <div className="flex gap-2">
+                  <button type="submit" className="rounded-full bg-white px-4 py-1.5 text-sm font-medium text-neutral-950 hover:bg-neutral-200">Save</button>
+                  <button type="button" onClick={() => setEditing(false)} className="rounded-full border border-neutral-700 px-4 py-1.5 text-sm text-neutral-300 hover:text-white">Cancel</button>
+                </div>
+              </form>
+            ) : (
+              <>
+              <h1 className="text-2xl font-bold leading-tight">{profile.displayName}</h1>
+              <p className="text-sm text-neutral-400">
+                @{profile.username} · Member since {new Date(profile.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+              </p>
+              {profile.bio && <p className="mt-1 text-sm text-neutral-300">{profile.bio}</p>}
+                {profile.isOwner && (
+                  <button onClick={startEditing} className="mt-3 rounded-full border border-neutral-700 px-4 py-1.5 text-sm font-medium text-neutral-300 hover:border-neutral-500 hover:text-white">
+                    Edit profile
+                  </button>
+                )}
+              </>
+            )}
+            {saveError && <p className="mt-2 text-sm text-red-400">{saveError}</p>}
             {!profile.isOwner && profile.isSignedIn && (
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
@@ -232,7 +329,7 @@ export default function ProfilePage() {
           <div className="text-center">
             <p className="text-xs text-neutral-400">Last 4 weeks</p>
             <p className="text-5xl font-bold tabular-nums leading-none mt-1">{d.recentCount}</p>
-            <p className="mt-1 text-xs text-neutral-500">Movies ranked</p>
+            <p className="mt-1 text-xs text-neutral-500">Movies watched</p>
           </div>
           <WeekGrid grid={d.grid} />
         </div>
@@ -309,7 +406,7 @@ export default function ProfilePage() {
                 <div className="mb-4 flex items-baseline justify-between">
                   <h2 className="text-lg font-semibold">Activity</h2>
                   <p className="text-sm text-neutral-400">
-                    <span className="font-semibold text-white">{d.weeks.reduce((s, w) => s + w.count, 0)}</span> ranked · last 12 weeks
+                    <span className="font-semibold text-white">{d.weeks.reduce((s, w) => s + w.count, 0)}</span> watched · last 12 weeks
                   </p>
                 </div>
                 <ActivityChart weeks={d.weeks} />
@@ -437,7 +534,7 @@ export default function ProfilePage() {
 
             <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-neutral-500">Last 4 weeks</p>
             <div className="divide-y divide-neutral-800">
-              <StatRow label="Movies ranked" value={d.recentCount} />
+              <StatRow label="Movies watched" value={d.recentCount} />
               <StatRow label="Per week" value={(d.recentCount / 4).toFixed(1)} />
               <StatRow label="Avg score" value={d.recentAvg ?? '–'} />
             </div>

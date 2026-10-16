@@ -3,7 +3,8 @@
 
 export interface RankedItem {
   tmdbId: number
-  rank: number
+  /** 0–10 score derived from the user's verdict and order (see ranking.ts). */
+  score: number | null
 }
 
 export type TasteMatch = {
@@ -13,35 +14,30 @@ export type TasteMatch = {
 }
 
 const MIN_SHARED = 3
+/** An average score gap this large (or more) counts as no match at all. */
+const MAX_GAP = 5
 
 /**
- * Looks only at movies both users ranked, puts each user's order of those
- * movies on a 0–1 scale (0 = favorite of the shared set, 1 = least favorite),
- * and averages how far apart the two users place each movie. Same order
- * scores 100, exactly reversed scores 0.
+ * Looks only at movies both users ranked and compares their scores. Scores
+ * already combine the verdict (liked / fine / didn't like) with the order
+ * inside it, so two people who both liked a movie stay close even if they
+ * placed it a few spots apart. Identical scores give 100; an average gap of
+ * 5 points or more gives 0.
+ *
+ * (Comparing order alone was too blunt with few shared movies: three movies
+ * both people liked, ranked in opposite order, scored 0%.)
  */
 export function computeTasteMatch(a: RankedItem[], b: RankedItem[]): TasteMatch {
-  const inB = new Set(b.map(x => x.tmdbId))
-  const sharedIds = new Set(a.filter(x => inB.has(x.tmdbId)).map(x => x.tmdbId))
+  const scoreB = new Map(b.filter(x => x.score != null).map(x => [x.tmdbId, x.score!]))
+  const gaps = a
+    .filter(x => x.score != null && scoreB.has(x.tmdbId))
+    .map(x => Math.abs(x.score! - scoreB.get(x.tmdbId)!))
 
-  if (sharedIds.size < MIN_SHARED) return { percent: null, sharedCount: sharedIds.size }
+  if (gaps.length < MIN_SHARED) return { percent: null, sharedCount: gaps.length }
 
-  const pa = percentiles(a.filter(x => sharedIds.has(x.tmdbId)))
-  const pb = percentiles(b.filter(x => sharedIds.has(x.tmdbId)))
-
-  let totalGap = 0
-  for (const id of sharedIds) totalGap += Math.abs(pa.get(id)! - pb.get(id)!)
-
-  // The largest possible total gap comes from fully reversed order; scale by it.
-  const n = sharedIds.size
-  let maxGap = 0
-  for (let i = 0; i < n; i++) maxGap += Math.abs((2 * i) / (n - 1) - 1)
-
-  return { percent: Math.round((1 - totalGap / maxGap) * 100), sharedCount: n }
-}
-
-function percentiles(items: RankedItem[]): Map<number, number> {
-  const sorted = [...items].sort((x, y) => x.rank - y.rank)
-  const denom = Math.max(sorted.length - 1, 1)
-  return new Map(sorted.map((item, i) => [item.tmdbId, i / denom]))
+  const avgGap = gaps.reduce((s, g) => s + g, 0) / gaps.length
+  return {
+    percent: Math.round(Math.max(0, 1 - avgGap / MAX_GAP) * 100),
+    sharedCount: gaps.length,
+  }
 }

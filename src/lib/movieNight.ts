@@ -57,8 +57,8 @@ const PICKS_SCHEMA = {
         properties: {
           title: { type: 'string' },
           year: { type: 'integer' },
-          forA: { type: 'string', description: 'Why person A will like it, citing movies they ranked.' },
-          forB: { type: 'string', description: 'Why person B will like it, citing movies they ranked.' },
+          forA: { type: 'string', description: 'Why person A will like it, citing movies they ranked. Written to person A as "you", never by name.' },
+          forB: { type: 'string', description: 'Why person B will like it, citing movies they ranked. Written to person B as "you", never by name.' },
         },
         required: ['title', 'year', 'forA', 'forB'],
         additionalProperties: false,
@@ -96,8 +96,8 @@ export async function planMovieNight(userId: string, friendUsername: string) {
   }
 
   const match = computeTasteMatch(
-    watchedOf(me).map(r => ({ tmdbId: r.movie.tmdbId, rank: r.rank })),
-    watchedOf(friend).map(r => ({ tmdbId: r.movie.tmdbId, rank: r.rank })),
+    watchedOf(me).map(r => ({ tmdbId: r.movie.tmdbId, score: r.score })),
+    watchedOf(friend).map(r => ({ tmdbId: r.movie.tmdbId, score: r.score })),
   )
 
   // Anything either person has already seen is off the table.
@@ -119,6 +119,7 @@ Guidelines:
 - Avoid what either person ranks near the bottom. A pick one person would hate fails.
 - If something on either watchlist fits both people, include it; it's a movie someone already wants to see.
 - In forA and forB, name specific movies from that person's list. Avoid generic praise.
+- Write forA and forB in the second person, speaking directly to that person ("You ranked Divergent 8.1, so..."). Never use their name or "he"/"she"/"they" there; each note is shown under a "For <name>" heading.
 - Neither has seen any of these, so don't pick them: ${seenTitles.join('; ')}
 
 ${describe(me)}

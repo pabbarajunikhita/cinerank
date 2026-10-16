@@ -48,7 +48,7 @@ ${movieList}
 
 Respond ONLY with valid JSON in this exact format, nothing else:
 [
-  {"title": "Movie Title", "reason": "1-2 sentence reason why they'd love this based on their taste"},
+  {"title": "Movie Title", "reason": "1-2 sentence reason, written to the person as \"you\" (e.g. \"You ranked X highly...\"), never \"they\" or \"their\""},
   ...
 ]`
       }]
