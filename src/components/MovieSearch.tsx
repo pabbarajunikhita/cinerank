@@ -97,7 +97,7 @@ export default function MovieSearch({ onAddMovie }: MovieSearchProps) {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="text-xs border-neutral-600 text-neutral-300 hover:text-white h-7 px-2"
+                  className="text-xs border-neutral-600 bg-transparent text-neutral-300 hover:bg-neutral-800 hover:text-white h-7 px-2"
                   onClick={() => {
                     onAddMovie(movie, 'WANT_TO_WATCH')
                     setQuery('')

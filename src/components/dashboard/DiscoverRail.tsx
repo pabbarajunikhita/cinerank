@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { Link2, Sparkles, Users } from 'lucide-react'
 import { getImageUrl } from '@/lib/tmdb'
@@ -11,6 +11,35 @@ interface Recommendation {
   tmdbId: number
   posterPath: string | null
   releaseDate: string
+}
+
+const REC_STEPS = ['Reading your rankings…', 'Looking for patterns in your taste…', 'Picking movies you haven’t seen…']
+
+function RecsLoading() {
+  const [step, setStep] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setStep(s => Math.min(s + 1, REC_STEPS.length - 1)), 2500)
+    return () => clearInterval(t)
+  }, [])
+  return (
+    <div className="mt-4">
+      <p key={step} className="flex items-center gap-2 text-sm text-orange-300 animate-in fade-in duration-500">
+        <Sparkles size={14} className="animate-pulse" /> {REC_STEPS[step]}
+      </p>
+      <ul className="mt-3 space-y-3">
+        {[0, 1, 2].map(i => (
+          <li key={i} className="flex gap-3 animate-pulse" style={{ animationDelay: `${i * 0.2}s` }}>
+            <div className="h-16 w-11 flex-shrink-0 rounded bg-neutral-800" />
+            <div className="flex-1 space-y-2 py-1">
+              <div className="h-3 w-3/4 rounded bg-neutral-800" />
+              <div className="h-2.5 w-1/4 rounded bg-neutral-800" />
+              <div className="h-2.5 w-full rounded bg-neutral-800" />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
 }
 
 export default function DiscoverRail({ username, rankedCount }: { username: string | null; rankedCount: number }) {
@@ -82,6 +111,8 @@ export default function DiscoverRail({ username, rankedCount }: { username: stri
               </li>
             ))}
           </ul>
+        ) : loading ? (
+          <RecsLoading />
         ) : (
           <>
             <button

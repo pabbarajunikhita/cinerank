@@ -6,9 +6,9 @@ import Link from 'next/link'
 import { Popcorn } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Skeleton } from '@/components/ui/skeleton'
 import MovieNightResults, { MovieNight } from '@/components/MovieNightResults'
 import ShareMovieNightButton from '@/components/ShareMovieNightButton'
+import MovieNightLoading, { type LoadingPerson } from '@/components/MovieNightLoading'
 
 interface Friend {
   username: string
@@ -28,9 +28,13 @@ export default function MovieNightPage({
   const [loading, setLoading] = useState(typeof initial === 'string' && initial !== '')
   const [error, setError] = useState<string | null>(null)
   const [friends, setFriends] = useState<Friend[] | null>(null)
+  const [me, setMe] = useState<LoadingPerson | null>(null)
+  // Who the current plan is with, for the loading screen.
+  const [planningWith, setPlanningWith] = useState(typeof initial === 'string' ? initial : '')
 
   const plan = (name: string) => {
     if (!name.trim()) return
+    setPlanningWith(name)
     setLoading(true)
     setError(null)
     setResult(null)
@@ -58,6 +62,10 @@ export default function MovieNightPage({
       .then(res => (res.ok ? res.json() : []))
       .then(setFriends)
       .catch(() => setFriends([]))
+    fetch('/api/me')
+      .then(res => (res.ok ? res.json() : null))
+      .then(u => u && setMe({ displayName: u.displayName, avatarUrl: u.avatarUrl }))
+      .catch(() => {})
     if (typeof initial === 'string' && initial) request(initial)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -128,12 +136,11 @@ export default function MovieNightPage({
         <p className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</p>
       )}
 
-      {loading && (
-        <div className="space-y-4">
-          <Skeleton className="h-28 w-full rounded-2xl" />
-          {[0, 1, 2].map(i => <Skeleton key={i} className="h-44 w-full rounded-2xl" />)}
-        </div>
-      )}
+      {loading && (() => {
+        const handle = planningWith.trim().replace(/^@/, '')
+        const f = friends?.find(x => x.username.toLowerCase() === handle.toLowerCase())
+        return <MovieNightLoading me={me} friend={f ? { displayName: f.displayName, avatarUrl: f.avatarUrl } : { displayName: handle || 'Friend', avatarUrl: null }} />
+      })()}
 
       {result && (
         <div className="space-y-6">

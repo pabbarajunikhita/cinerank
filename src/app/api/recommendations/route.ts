@@ -37,8 +37,9 @@ export async function GET() {
       .join('\n')
 
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 1024,
+      // Fast, inexpensive model: this runs for one person and needs to feel instant.
+      model: 'claude-haiku-4-5',
+      max_tokens: 800,
       messages: [{
         role: 'user',
         content: `Based on this person's ranked movies, recommend exactly 5 movies they haven't watched yet that they would love. Do not recommend any of these movies they've already watched: ${watchedTitles.join(', ')}.
@@ -48,7 +49,7 @@ ${movieList}
 
 Respond ONLY with valid JSON in this exact format, nothing else:
 [
-  {"title": "Movie Title", "reason": "1-2 sentence reason, written to the person as \"you\" (e.g. \"You ranked X highly...\"), never \"they\" or \"their\""},
+  {"title": "Movie Title", "reason": "one short sentence, written to the person as \"you\" (e.g. \"You ranked X highly...\"), never \"they\" or \"their\""},
   ...
 ]`
       }]
@@ -56,8 +57,10 @@ Respond ONLY with valid JSON in this exact format, nothing else:
 
     const textBlock = message.content.find(block => block.type === 'text')
     const responseText = textBlock && 'text' in textBlock ? textBlock.text : '[]'
-    const cleaned = responseText.replace(/```json|```/g, '').trim()
-    const recommendations = JSON.parse(cleaned)
+    // Take just the JSON array, in case the model adds a sentence or code fence around it.
+    const start = responseText.indexOf('[')
+    const end = responseText.lastIndexOf(']')
+    const recommendations = JSON.parse(start >= 0 && end > start ? responseText.slice(start, end + 1) : '[]')
 
     // Fetch TMDB data for each recommended movie
     const enriched = await Promise.all(
@@ -76,7 +79,7 @@ Respond ONLY with valid JSON in this exact format, nothing else:
 
     return NextResponse.json({ recommendations: enriched.filter(r => r.tmdbId) })
   } catch (error) {
-    console.error(error)
+    console.error('Recommendations failed:', error)
     return NextResponse.json({ error: 'Failed to generate recommendations' }, { status: 500 })
   }
 }

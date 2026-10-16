@@ -31,7 +31,10 @@ export default function ShareMovieNightButton({ id, friendName }: { id: string; 
   }
 
   return (
-    <Button onClick={share} variant="outline" className="gap-2">
+    <Button
+      onClick={share}
+      className="gap-2 rounded-full border border-neutral-700 bg-neutral-900 px-5 text-white hover:border-neutral-500 hover:bg-neutral-800"
+    >
       {copied ? <Check size={16} /> : <Share2 size={16} />}
       {copied ? 'Link copied' : `Share with ${friendName}`}
     </Button>

@@ -48,7 +48,7 @@ const PICKS_SCHEMA = {
   properties: {
     sharedTaste: {
       type: 'string',
-      description: 'One or two sentences on what these two people have in common, and where they differ.',
+      description: 'Two short sentences: what these two people have in common, and where they differ.',
     },
     picks: {
       type: 'array',
@@ -57,8 +57,8 @@ const PICKS_SCHEMA = {
         properties: {
           title: { type: 'string' },
           year: { type: 'integer' },
-          forA: { type: 'string', description: 'Why person A will like it, citing movies they ranked. Written to person A as "you", never by name.' },
-          forB: { type: 'string', description: 'Why person B will like it, citing movies they ranked. Written to person B as "you", never by name.' },
+          forA: { type: 'string', description: 'Why person A will like it, citing a movie they ranked. One or two short sentences, written to person A as "you", never by name.' },
+          forB: { type: 'string', description: 'Why person B will like it, citing a movie they ranked. One or two short sentences, written to person B as "you", never by name.' },
         },
         required: ['title', 'year', 'forA', 'forB'],
         additionalProperties: false,
@@ -107,7 +107,7 @@ export async function planMovieNight(userId: string, friendUsername: string) {
   const message = await anthropic.messages.create({
     model: 'claude-opus-5-5',
     max_tokens: 16000,
-    output_config: { effort: 'medium', format: { type: 'json_schema', schema: PICKS_SCHEMA } },
+    output_config: { effort: 'low', format: { type: 'json_schema', schema: PICKS_SCHEMA } },
     messages: [{
       role: 'user',
       content: `Two friends want to watch a movie together tonight. Person A is ${me.displayName}, person B is ${friend.displayName}. Using their rankings, pick 4 movies neither has seen that both are likely to enjoy.
