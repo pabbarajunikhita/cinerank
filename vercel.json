@@ -1,5 +1,11 @@
 {
+  "regions": [
+    "iad1"
+  ],
   "crons": [
-    { "path": "/api/health", "schedule": "0 12 * * *" }
+    {
+      "path": "/api/health",
+      "schedule": "0 12 * * *"
+    }
   ]
 }
