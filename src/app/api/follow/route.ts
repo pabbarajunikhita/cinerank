@@ -1,10 +1,10 @@
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getAuthUser } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 async function currentUserId() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   return user?.id ?? null
 }
 

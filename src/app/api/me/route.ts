@@ -1,11 +1,11 @@
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getAuthUser } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { isOwnPhotoUrl } from '@/lib/photos'
 
 export async function GET() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -29,7 +29,7 @@ export async function GET() {
 // Update your own profile: any of displayName, bio, avatarUrl (null removes the photo).
 export async function PATCH(request: Request) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json().catch(() => ({}))

@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getAuthUser } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { searchMovies } from '@/lib/tmdb'
 import Anthropic from '@anthropic-ai/sdk'
@@ -10,7 +10,7 @@ const anthropic = new Anthropic({
 
 export async function GET() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

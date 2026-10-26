@@ -1,12 +1,12 @@
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getAuthUser } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 // Find people to follow. With ?q=, matches username or display name; without
 // it, suggests the most recently joined users. Only public fields are returned.
 export async function GET(request: Request) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const q = new URL(request.url).searchParams.get('q')?.trim().replace(/^@/, '') ?? ''

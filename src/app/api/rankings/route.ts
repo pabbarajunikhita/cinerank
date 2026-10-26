@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getAuthUser, type AuthUser } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import type { User as AuthUser } from '@supabase/supabase-js'
 import type { Prisma } from '@prisma/client'
 import { isOwnPhotoUrl } from '@/lib/photos'
 import { assignRanksAndScores, insertAt, isSentiment, type RankedItem, type Sentiment } from '@/lib/ranking'
@@ -93,7 +92,7 @@ function parseWatchedDate(value: unknown): Date | 'invalid' {
 
 export async function POST(request: Request) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -189,7 +188,7 @@ export async function POST(request: Request) {
 
 export async function GET() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -211,7 +210,7 @@ export async function GET() {
 
 export async function DELETE(request: Request) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

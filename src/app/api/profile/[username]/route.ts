@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getAuthUser } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 // Public profile. Only public fields are selected (never email), and `isOwner`
@@ -38,7 +38,7 @@ export async function GET(
     }
 
     const supabase = await createClient()
-    const { data: { user: viewer } } = await supabase.auth.getUser()
+    const viewer = await getAuthUser(supabase)
 
     const isFollowing = viewer && viewer.id !== user.id
       ? !!(await prisma.follow.findUnique({

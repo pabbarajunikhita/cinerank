@@ -29,9 +29,10 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // getClaims() refreshes an expired session (writing new cookies via setAll) and
+  // then verifies the JWT locally with the project's public key: no Auth round-trip.
+  const { data } = await supabase.auth.getClaims()
+  const user = data?.claims ?? null
 
   // If user is not logged in and they try to access a protected route, redirect them to a login page
   if (
