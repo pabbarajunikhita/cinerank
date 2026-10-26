@@ -3,7 +3,11 @@ const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500'
 
 // TMDB issues two kinds of credentials: a 32-char v3 "API key" (sent as ?api_key=)
 // and a long v4 "Read Access Token" (sent as a Bearer header). Support both.
-async function tmdbFetch(path: string, params: Record<string, string> = {}) {
+// TMDB data barely changes, so responses are kept in Next.js's data cache (shared
+// across serverless instances on Vercel) instead of calling TMDB on every request.
+const ONE_DAY = 60 * 60 * 24
+
+async function tmdbFetch(path: string, params: Record<string, string> = {}, revalidate = ONE_DAY) {
   const key = process.env.TMDB_API_KEY?.trim().replace(/^"|"$/g, '')
   if (!key) throw new Error('TMDB_API_KEY is not set')
 
@@ -14,6 +18,7 @@ async function tmdbFetch(path: string, params: Record<string, string> = {}) {
 
   const response = await fetch(url, {
     headers: isV4Token ? { Authorization: `Bearer ${key}`, accept: 'application/json' } : { accept: 'application/json' },
+    next: { revalidate },
   })
   const data = await response.json()
   if (!response.ok) {
@@ -46,7 +51,9 @@ export function getImageUrl(posterPath: string | null): string {
 }
 
 export async function searchMovies(query: string): Promise<TMDBMovie[]> {
-  const data = await tmdbFetch('/search/movie', { query, include_adult: 'false' })
+  // Normalize so "Batman", "batman " and "BATMAN" share one cache entry.
+  const normalized = query.trim().toLowerCase().replace(/\s+/g, ' ')
+  const data = await tmdbFetch('/search/movie', { query: normalized, include_adult: 'false' })
   return data.results || []
 }
 

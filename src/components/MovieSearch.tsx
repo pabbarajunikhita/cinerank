@@ -17,6 +17,8 @@ export default function MovieSearch({ onAddMovie }: MovieSearchProps) {
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
+  // Results already fetched this session, so backspacing or retyping a query is instant.
+  const cacheRef = useRef(new Map<string, TMDBMovie[]>())
 
 
   useEffect(() => {
@@ -28,13 +30,24 @@ export default function MovieSearch({ onAddMovie }: MovieSearchProps) {
 
     // Debounce — wait 400ms after user stops typing before searching
     if (debounceRef.current) clearTimeout(debounceRef.current)
+
+    const key = query.trim().toLowerCase().replace(/\s+/g, ' ')
+    const cached = cacheRef.current.get(key)
+    if (cached) {
+      setResults(cached)
+      setOpen(true)
+      return
+    }
+
     debounceRef.current = setTimeout(async () => {
       setLoading(true)
       try {
-        const res = await fetch(`/api/movies/search?q=${encodeURIComponent(query)}`)
+        const res = await fetch(`/api/movies/search?q=${encodeURIComponent(key)}`)
         const data = await res.json()
         if (!res.ok) console.error('Movie search error:', data.error)
-        setResults((data.results ?? []).slice(0, 6))
+        const top = (data.results ?? []).slice(0, 6)
+        if (res.ok) cacheRef.current.set(key, top)
+        setResults(top)
         setOpen(true)
       } catch (err) {
         console.error('Movie search request failed:', err)
