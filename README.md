@@ -2,28 +2,29 @@
 
 ## TL;DR
 
-I'm a big fan of apps like Beli and Strava, where you can rank, track, and share the things you've done. So I built the same thing for movies! In CineRank, you add movies you've watched, compare them head-to-head, and CineRank figures out where each one ranks based on your taste.
+Picking a movie shouldn't take longer than watching one. But on movie nights with friends, we'd spend ages scrolling, debating, and vetoing, and then end up rewatching something we'd all seen before. Streaming apps don't know what you actually liked, and swipe apps start from zero every time.
 
-It's social too: follow friends, see what they're watching, and plan a **Movie Night**, where CineRank reads both of your rankings and finds movies neither of you has seen that you'll both like, even if your tastes are completely different.
+CineRank fixes that by learning your real taste. You add movies you've watched, compare them head-to-head, and CineRank builds a ranked list of your favorites (think Beli, but for movies).
 
-**Live:** [cinerank-dusky.vercel.app](https://cinerank-dusky.vercel.app/)
+Then it puts that taste to work. Plan a **Movie Night** with a friend, and CineRank reads both of your rankings to find movies neither of you has seen that you'll both like, even if your tastes are completely different. You can also follow friends and see what they're watching.
+
+**Live:** [cinerank-dusky.vercel.app](https://cinerank-dusky.vercel.app/)  
+**Product Requirements Doc:** [CineRank PRD](CineRank-PRD.pdf)
 
 ## How ranking works
 
-1. **Pick a verdict.** Liked, fine, or didn't like. This puts the movie in one of three groups, and each group owns a score band: 7–10, 4–7, and 0–4.
-2. **Compare head-to-head.** The app binary-searches the group you picked. Each "which did you prefer?" halves the remaining range, so placing a movie in a group of *n* takes about log₂(*n*) comparisons: 7 for a group of 100.
-3. **Scores come from the order.** Your list is the source of truth. After every insert, move, or delete, the server re-derives every rank and score from it, spreading scores evenly across each band (three liked movies score 10, 9, 8; add a fourth and they shift). A movie you preferred can never score below one it beat.
+1. **Pick a reaction.** Say whether you liked it, thought it was fine, or didn't like it. Liked movies score between 7 and 10, fine ones between 4 and 7, and ones you didn't like between 0 and 4.
+2. **Compare it to other movies.** CineRank asks you to choose between the new movie and ones you've already ranked in that group. Each answer cuts the options in half, so even with 100 movies in a group, it takes about 7 questions to find the right spot.
+3. **Get your scores.** Scores are based on where each movie sits in your list. Every time you add, move, or remove a movie, CineRank recalculates all the scores so they're spread evenly within each group. A movie you ranked higher will always have a higher score than one below it.
 
-The rules are all in [`src/lib/ranking.ts`](src/lib/ranking.ts), a pure module with no database or UI code. The API route does the insert and re-rank in one Postgres transaction and takes a row lock on the user first, so two quick saves can't interleave and corrupt the order.
+The ranking logic lives in [`src/lib/ranking.ts`](src/lib/ranking.ts) and doesn't depend on the database or UI. When you save a ranking, the API updates your list in a single database transaction and locks your account's rows while it runs, so two quick saves can't overwrite each other and scramble your order.
 
 ## How Movie Night works
 
-1. **Taste match (plain code).** [`src/lib/tasteMatch.ts`](src/lib/tasteMatch.ts) looks at the movies both people ranked and compares their scores: identical scores give 100%, an average gap of 5 points or more gives 0%. With fewer than 3 movies in common it shows no score at all, because a number based on that little data would mislead.
-2. **Picks (Claude).** Both ranked lists and watchlists go to Claude, which returns structured JSON: a short summary of where the two tastes overlap and differ, and picks with a separate reason for each person, written to them as "you" and citing movies from their own list. This works even when two people have watched completely different things, where an overlap-based recommender has nothing to go on.
-3. **Guardrails.** Every pick is looked up on TMDB, so titles and posters are real, and anything either person has already seen is dropped.
-4. **Sharing.** The result is saved with an unguessable id, and the link (`/movie-night/<id>`) opens without an account, so the friend can see it right away.
-
-The split is deliberate: ranking and taste match need to be exact and explainable, so they're code. Claude handles what code can't: reading two people's taste and explaining a pick in plain language.
+1. **Taste match.** [`src/lib/tasteMatch.ts`](src/lib/tasteMatch.ts) compares the scores two people gave the movies they've both ranked. If their scores are identical, the match is 100%. If they're 5 or more points apart on average, it's 0%. If they have fewer than 3 movies in common, no score is shown, since there isn't enough data for it to mean anything.
+2. **Picks.** CineRank sends both people's ranked lists and watchlists to Claude. Claude sends back a short summary of how their tastes overlap and differ, plus a list of picks. Each pick has a separate reason for each person that refers to movies on their own list. This works even if the two people have never watched the same movies, which is where most recommenders fail.
+3. **Checks.** Every pick is looked up on TMDB to confirm the title and poster are real. Anything either person has already seen is removed.
+4. **Sharing.** Each Movie Night gets its own private link (`/movie-night/<id>`) that opens without an account, so your friend can see the picks right away.
 
 ## Features
 
@@ -31,6 +32,10 @@ The split is deliberate: ranking and taste match need to be exact and explainabl
 - **Movie search:** find any movie through TMDB as you type.
 - **Head-to-head ranking:** pick liked / fine / didn't like, then choose between movies until the new one finds its spot.
 - **Details:** add a watched date, a short review, vibe tags, and a photo.
+
+### Movie Night (`/movie-night`)
+- **Pick a friend** and get a taste match score, a summary of your shared taste, and picks neither of you has seen, with a reason for each of you.
+- **Share** the result by link (native share sheet on phones); it opens without logging in.
 
 ### Photos
 - **Add a selfie or photo** to any ranking, from your camera or library.
@@ -41,10 +46,6 @@ The split is deliberate: ranking and taste match need to be exact and explainabl
 - **Activity feed:** recent rankings from people you follow, with your score next to theirs when you've both seen a movie.
 - **Find people:** search by name or username, and follow or unfollow.
 - **Following / Followers:** with "Follow back", and a shortcut to start a Movie Night with anyone you follow.
-
-### Movie Night (`/movie-night`)
-- **Pick a friend** and get a taste match score, a summary of your shared taste, and picks neither of you has seen, with a reason for each of you.
-- **Share** the result by link (native share sheet on phones); it opens without logging in.
 
 ### Dashboard
 - **Profile card:** your stats, latest ranking, weekly streak, top vibes, and AI taste profile.
